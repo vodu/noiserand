@@ -5,6 +5,9 @@ let noiseGain;
 let whiteNoiseNode;
 let noiseVolume = 0.5;
 
+let masterGain;
+let masterVolume = 0.5;
+
 const fadeTime = 2.0; // Duration for fade-in and fade-out in seconds
 
 //
@@ -22,7 +25,13 @@ async function start_noise() {
         await loadWhiteNoiseWorklet();
         whiteNoiseNode = new AudioWorkletNode(audioCtx, 'white-noise-processor');
         whiteNoiseNode.connect(noiseGain);
-        noiseGain.connect(audioCtx.destination);
+
+        // Master Gain
+        masterGain = audioCtx.createGain();
+        masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
+
+        // Connections
+        whiteNoiseNode.connect(noiseGain).connect(masterGain).connect(audioCtx.destination);
 
         isRunning = true;
     }
@@ -69,5 +78,16 @@ function toggleStartStop() {
 async function loadWhiteNoiseWorklet() {
     if (audioCtx) {
         await audioCtx.audioWorklet.addModule('white-noise-worklet.js');
+    }
+}
+
+// 
+// UI
+//
+function updateMasterVolume(value) {
+    masterVolume = parseFloat(value);
+    document.getElementById('masterVolumeValue').textContent = masterVolume.toFixed(2);
+    if (masterGain) {
+        masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
     }
 }

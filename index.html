@@ -6,10 +6,21 @@
     <title>Noiserand</title>
 </head>
 <body>
-    <h1>Noiserand</h1>
+
+    <h1>Master Controls</h1>
     <div id="master-control">
-        <button id="startStopButton" onclick="toggleStartStop()">Start</button>
+        <div>
+            <label for="masterVolumeSlider">Master Volume</label>
+            <input id="masterVolumeSlider" type="range" min="0" max="1" value="0.5" step="0.01" oninput="updateMasterVolume(this.value)">
+            <span id="masterVolumeValue">0.50</span>
+        </div>
+        <div>
+            <button id="startStopButton" onclick="toggleStartStop()">Start</button>
+        </div>
     </div>
+
+    <h1>Noiserand</h1>
+
     <script src="script.js"></script>
 </body>
 </html>
