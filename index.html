@@ -15,11 +15,15 @@
             <span id="masterVolumeValue">0.50</span>
         </div>
         <div>
+            <label for="stereoPanningSlider">Stereo Panning</label>
+            <input id="stereoPanningSlider" type="range" min="-1" max="1" value="0" step="0.01" oninput="updateStereoPanning(this.value)">
+            <span id="stereoPanningValue">0.00</span>
+        </div>
+        <div>
             <button id="startStopButton" onclick="toggleStartStop()">Start</button>
         </div>
     </div>
 
-    <h1>Noiserand</h1>
 
     <script src="script.js"></script>
 </body>

@@ -1,14 +1,21 @@
+// globals
 let audioCtx;
 let isRunning;
 
+const fadeTime = 1.0; // Duration for fade-in and fade-out in seconds
+
+// noise generator
 let noiseGain;
 let whiteNoiseNode;
 let noiseVolume = 0.5;
 
+// master gain
 let masterGain;
 let masterVolume = 0.5;
 
-const fadeTime = 2.0; // Duration for fade-in and fade-out in seconds
+// stereo panner
+let stereoPanner;
+let stereoPannerValue = 0;
 
 //
 // AudioContext start and stop
@@ -30,8 +37,16 @@ async function start_noise() {
         masterGain = audioCtx.createGain();
         masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
 
+        // Stereo Panner
+        stereoPanner = audioCtx.createStereoPanner();
+        stereoPanner.pan.setValueAtTime(stereoPannerValue, audioCtx.currentTime);
+
         // Connections
-        whiteNoiseNode.connect(noiseGain).connect(masterGain).connect(audioCtx.destination);
+        whiteNoiseNode
+        .connect(noiseGain)
+        .connect(masterGain)
+        .connect(stereoPanner)
+        .connect(audioCtx.destination);
 
         isRunning = true;
     }
@@ -51,6 +66,8 @@ async function stop_noise() {
 
     whiteNoiseNode.port.postMessage('stop');
     whiteNoiseNode.disconnect();
+
+    stereoPanner.disconnect();
 
     // audiocontext
     audioCtx.close();
@@ -89,5 +106,13 @@ function updateMasterVolume(value) {
     document.getElementById('masterVolumeValue').textContent = masterVolume.toFixed(2);
     if (masterGain) {
         masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
+    }
+}
+
+function updateStereoPanning(value) {
+    stereoPannerValue = parseFloat(value);
+    document.getElementById('stereoPanningValue').textContent = stereoPannerValue.toFixed(2);
+    if (stereoPanner) {
+        stereoPanner.pan.setValueAtTime(stereoPannerValue, audioCtx.currentTime);
     }
 }
