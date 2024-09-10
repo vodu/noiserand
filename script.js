@@ -5,8 +5,10 @@ let isRunning;
 const fadeTime = 1.0; // Duration for fade-in and fade-out in seconds
 
 // noise generator
-let noiseGain;
-let whiteNoiseNode;
+let noiseGainLeft;
+let whiteNoiseNodeLeft;
+let noiseGainRight;
+let whiteNoiseNodeRight;
 let noiseVolume = 0.5;
 
 // master gain
@@ -26,12 +28,20 @@ async function start_noise() {
         console.log('audioCtx created');
         
         // White Noise Node
-        noiseGain = audioCtx.createGain();
-        noiseGain.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
+        noiseGainLeft = audioCtx.createGain();
+        noiseGainRight = audioCtx.createGain();
+        noiseGainLeft.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
+        noiseGainRight.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
+
+        var noiseChannelMerger = audioCtx.createChannelMerger(2);
+        noiseGainLeft.connect(noiseChannelMerger, 0, 0);
+        noiseGainRight.connect(noiseChannelMerger, 0, 1);
 
         await loadWhiteNoiseWorklet();
-        whiteNoiseNode = new AudioWorkletNode(audioCtx, 'white-noise-processor');
-        whiteNoiseNode.connect(noiseGain);
+        whiteNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'white-noise-processor');
+        whiteNoiseNodeLeft.connect(noiseGainLeft);
+        whiteNoiseNodeRight = new AudioWorkletNode(audioCtx, 'white-noise-processor');
+        whiteNoiseNodeRight.connect(noiseGainRight);
 
         // Master Gain
         masterGain = audioCtx.createGain();
@@ -42,9 +52,7 @@ async function start_noise() {
         stereoPanner.pan.setValueAtTime(stereoPannerValue, audioCtx.currentTime);
 
         // Connections
-        whiteNoiseNode
-        .connect(noiseGain)
-        .connect(masterGain)
+        noiseChannelMerger.connect(masterGain)
         .connect(stereoPanner)
         .connect(audioCtx.destination);
 
@@ -58,14 +66,19 @@ async function stop_noise() {
     }
 
     // white noise
-    noiseGain.gain.cancelScheduledValues(audioCtx.currentTime);
-    noiseGain.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
-    noiseGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
-
+    noiseGainLeft.gain.cancelScheduledValues(audioCtx.currentTime);
+    noiseGainLeft.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
+    noiseGainLeft.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
+    noiseGainRight.gain.cancelScheduledValues(audioCtx.currentTime);
+    noiseGainRight.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
+    noiseGainRight.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
+    
     await new Promise(resolve => setTimeout(resolve, fadeTime * 1000));
 
-    whiteNoiseNode.port.postMessage('stop');
-    whiteNoiseNode.disconnect();
+    whiteNoiseNodeLeft.port.postMessage('stop');
+    whiteNoiseNodeLeft.disconnect();
+    whiteNoiseNodeRight.port.postMessage('stop');
+    whiteNoiseNodeRight.disconnect();
 
     stereoPanner.disconnect();
 
