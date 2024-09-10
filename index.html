@@ -24,6 +24,21 @@
         </div>
     </div>
 
+    <div id="noise-control">
+        <div>
+            <label for="noiseVolumeSlider">Noise Volume</label>
+            <input id="noiseVolumeSlider" type="range" min="0" max="1" value="0.5" step="0.01" oninput="updateNoiseVolume(this.value)">
+            <span id="noiseVolumeValue">0.50</span>
+        </div>
+        <div>
+            <label for="noiseTypeSelect">Noise Type</label>
+            <select id="noiseTypeSelect" onchange="updateNoiseType(this.value)">
+                <option value="white">White</option>
+                <option value="pink">Pink</option>
+            </select>
+        </div>
+    </div>
+
 
     <script src="script.js"></script>
 </body>

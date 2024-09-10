@@ -6,9 +6,11 @@ const fadeTime = 1.0; // Duration for fade-in and fade-out in seconds
 
 // noise generator
 let noiseGainLeft;
-let whiteNoiseNodeLeft;
 let noiseGainRight;
+let whiteNoiseNodeLeft;
 let whiteNoiseNodeRight;
+let pinkNoiseNodeLeft;
+let pinkNoiseNodeRight;
 let noiseVolume = 0.5;
 
 // master gain
@@ -38,10 +40,15 @@ async function start_noise() {
         noiseGainRight.connect(noiseChannelMerger, 0, 1);
 
         await loadWhiteNoiseWorklet();
+
         whiteNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'white-noise-processor');
         whiteNoiseNodeLeft.connect(noiseGainLeft);
         whiteNoiseNodeRight = new AudioWorkletNode(audioCtx, 'white-noise-processor');
         whiteNoiseNodeRight.connect(noiseGainRight);
+
+        // Pink Noise Node
+        pinkNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'pink-noise-processor');
+        pinkNoiseNodeRight = new AudioWorkletNode(audioCtx, 'pink-noise-processor');
 
         // Master Gain
         masterGain = audioCtx.createGain();
@@ -72,13 +79,18 @@ async function stop_noise() {
     noiseGainRight.gain.cancelScheduledValues(audioCtx.currentTime);
     noiseGainRight.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
     noiseGainRight.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
-    
+
     await new Promise(resolve => setTimeout(resolve, fadeTime * 1000));
 
     whiteNoiseNodeLeft.port.postMessage('stop');
     whiteNoiseNodeLeft.disconnect();
     whiteNoiseNodeRight.port.postMessage('stop');
     whiteNoiseNodeRight.disconnect();
+
+    pinkNoiseNodeLeft.port.postMessage('stop');
+    pinkNoiseNodeLeft.disconnect();
+    pinkNoiseNodeRight.port.postMessage('stop');
+    pinkNoiseNodeRight.disconnect();
 
     stereoPanner.disconnect();
 
@@ -107,7 +119,7 @@ function toggleStartStop() {
 //
 async function loadWhiteNoiseWorklet() {
     if (audioCtx) {
-        await audioCtx.audioWorklet.addModule('white-noise-worklet.js');
+        await audioCtx.audioWorklet.addModule('noise-worklet.js');
     }
 }
 
@@ -127,5 +139,30 @@ function updateStereoPanning(value) {
     document.getElementById('stereoPanningValue').textContent = stereoPannerValue.toFixed(2);
     if (stereoPanner) {
         stereoPanner.pan.setValueAtTime(stereoPannerValue, audioCtx.currentTime);
+    }
+}
+
+function updateNoiseVolume(value) {
+    noiseVolume = parseFloat(value);
+    document.getElementById('noiseVolumeValue').textContent = noiseVolume.toFixed(2);
+    if (noiseGainLeft && noiseGainRight) {
+        noiseGainLeft.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
+        noiseGainRight.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
+    }
+}
+
+function updateNoiseType(value) {
+    console.log('updateNoiseType: ' + value);
+
+    if (value === 'white') {
+        whiteNoiseNodeLeft.connect(noiseGainLeft);
+        whiteNoiseNodeRight.connect(noiseGainRight);
+        pinkNoiseNodeLeft.disconnect();
+        pinkNoiseNodeRight.disconnect();
+    } else {
+        pinkNoiseNodeLeft.connect(noiseGainLeft);
+        pinkNoiseNodeRight.connect(noiseGainRight);
+        whiteNoiseNodeLeft.disconnect();
+        whiteNoiseNodeRight.disconnect();
     }
 }
