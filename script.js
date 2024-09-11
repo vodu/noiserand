@@ -11,6 +11,8 @@ let whiteNoiseNodeLeft;
 let whiteNoiseNodeRight;
 let pinkNoiseNodeLeft;
 let pinkNoiseNodeRight;
+let brownNoiseNodeLeft;
+let brownNoiseNodeRight;
 let noiseVolume = 0.5;
 
 // master gain
@@ -29,7 +31,7 @@ async function start_noise() {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         console.log('audioCtx created');
         
-        // White Noise Node
+        // White Noise Gain
         noiseGainLeft = audioCtx.createGain();
         noiseGainRight = audioCtx.createGain();
         noiseGainLeft.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
@@ -39,8 +41,9 @@ async function start_noise() {
         noiseGainLeft.connect(noiseChannelMerger, 0, 0);
         noiseGainRight.connect(noiseChannelMerger, 0, 1);
 
-        await loadWhiteNoiseWorklet();
+        await loadNoiseWorklet();
 
+        // White Noise Node
         whiteNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'white-noise-processor');
         whiteNoiseNodeLeft.connect(noiseGainLeft);
         whiteNoiseNodeRight = new AudioWorkletNode(audioCtx, 'white-noise-processor');
@@ -49,6 +52,10 @@ async function start_noise() {
         // Pink Noise Node
         pinkNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'pink-noise-processor');
         pinkNoiseNodeRight = new AudioWorkletNode(audioCtx, 'pink-noise-processor');
+
+        brownNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
+        brownNoiseNodeRight = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
+
 
         // Master Gain
         masterGain = audioCtx.createGain();
@@ -72,7 +79,7 @@ async function stop_noise() {
         return;
     }
 
-    // white noise
+    // noise gain
     noiseGainLeft.gain.cancelScheduledValues(audioCtx.currentTime);
     noiseGainLeft.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
     noiseGainLeft.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
@@ -82,15 +89,23 @@ async function stop_noise() {
 
     await new Promise(resolve => setTimeout(resolve, fadeTime * 1000));
 
+    // white noise
     whiteNoiseNodeLeft.port.postMessage('stop');
     whiteNoiseNodeLeft.disconnect();
     whiteNoiseNodeRight.port.postMessage('stop');
     whiteNoiseNodeRight.disconnect();
 
+    // pink noise
     pinkNoiseNodeLeft.port.postMessage('stop');
     pinkNoiseNodeLeft.disconnect();
     pinkNoiseNodeRight.port.postMessage('stop');
     pinkNoiseNodeRight.disconnect();
+
+    // brown noise
+    brownNoiseNodeLeft.port.postMessage('stop');
+    brownNoiseNodeLeft.disconnect();
+    brownNoiseNodeRight.port.postMessage('stop');
+    brownNoiseNodeRight.disconnect();
 
     stereoPanner.disconnect();
 
@@ -117,7 +132,7 @@ function toggleStartStop() {
 //
 // AudioWorkletNode
 //
-async function loadWhiteNoiseWorklet() {
+async function loadNoiseWorklet() {
     if (audioCtx) {
         await audioCtx.audioWorklet.addModule('noise-worklet.js');
     }
@@ -159,10 +174,21 @@ function updateNoiseType(value) {
         whiteNoiseNodeRight.connect(noiseGainRight);
         pinkNoiseNodeLeft.disconnect();
         pinkNoiseNodeRight.disconnect();
-    } else {
+        brownNoiseNodeLeft.disconnect();
+        brownNoiseNodeRight.disconnect();
+    } else if (value == 'pink') {
         pinkNoiseNodeLeft.connect(noiseGainLeft);
         pinkNoiseNodeRight.connect(noiseGainRight);
         whiteNoiseNodeLeft.disconnect();
         whiteNoiseNodeRight.disconnect();
+        brownNoiseNodeLeft.disconnect();
+        brownNoiseNodeRight.disconnect();
+    } else if (value == 'brown') {
+        brownNoiseNodeLeft.connect(noiseGainLeft);
+        brownNoiseNodeRight.connect(noiseGainRight);
+        whiteNoiseNodeLeft.disconnect();
+        whiteNoiseNodeRight.disconnect();
+        pinkNoiseNodeLeft.disconnect();
+        pinkNoiseNodeRight.disconnect();
     }
 }

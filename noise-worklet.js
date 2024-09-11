@@ -48,3 +48,25 @@ class PinkNoiseProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('pink-noise-processor', PinkNoiseProcessor);
+
+class BrownNoiseProcessor extends AudioWorkletProcessor {
+    constructor() {
+        super();
+        this.lastOut = 0.0;
+    }
+
+    process(inputs, outputs, parameters) {
+        const output = outputs[0];
+        for (let channel = 0; channel < output.length; ++channel) {
+            for (let i = 0; i < output[channel].length; ++i) {
+                let white = Math.random() * 2 - 1;
+                output[channel][i] = (this.lastOut + (0.02 * white)) / 1.02;
+                this.lastOut = output[channel][i];
+                output[channel][i] *= 3.5; // (roughly) compensate for gain
+            }
+        }
+        return true
+    }
+}
+
+registerProcessor('brown-noise-processor', BrownNoiseProcessor);
