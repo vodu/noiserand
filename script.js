@@ -15,6 +15,11 @@ let brownNoiseNodeLeft;
 let brownNoiseNodeRight;
 let noiseVolume = 0.5;
 
+// bandpass filter for noise
+let noiseBandpassFilter;
+let noiseFilterFrequency = 500;
+let noiseFilterQ = 0.1;
+
 // master gain
 let masterGain;
 let masterVolume = 0.5;
@@ -56,6 +61,11 @@ async function start_noise() {
         brownNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
         brownNoiseNodeRight = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
 
+        // bandpass filter for noise
+        noiseBandpassFilter = audioCtx.createBiquadFilter();
+        noiseBandpassFilter.type = 'bandpass';
+        noiseBandpassFilter.frequency.setValueAtTime(noiseFilterFrequency, audioCtx.currentTime);
+        noiseBandpassFilter.Q.setValueAtTime(noiseFilterQ, audioCtx.currentTime);
 
         // Master Gain
         masterGain = audioCtx.createGain();
@@ -66,7 +76,9 @@ async function start_noise() {
         stereoPanner.pan.setValueAtTime(stereoPannerValue, audioCtx.currentTime);
 
         // Connections
-        noiseChannelMerger.connect(masterGain)
+        noiseChannelMerger
+        .connect(noiseBandpassFilter)
+        .connect(masterGain)
         .connect(stereoPanner)
         .connect(audioCtx.destination);
 
@@ -107,6 +119,7 @@ async function stop_noise() {
     brownNoiseNodeRight.port.postMessage('stop');
     brownNoiseNodeRight.disconnect();
 
+    noiseBandpassFilter.disconnect();
     stereoPanner.disconnect();
 
     // audiocontext
@@ -190,5 +203,23 @@ function updateNoiseType(value) {
         whiteNoiseNodeRight.disconnect();
         pinkNoiseNodeLeft.disconnect();
         pinkNoiseNodeRight.disconnect();
+    }
+}
+
+function updateNoiseFilterFrequency(value) {
+    console.log('updateNoiseFilterFrequency: ' + value);
+    noiseFilterFrequency = parseFloat(value);
+    document.getElementById('noiseFilterFrequencyValue').textContent = noiseFilterFrequency.toFixed(0);
+    if (noiseBandpassFilter) {
+        noiseBandpassFilter.frequency.setValueAtTime(noiseFilterFrequency, audioCtx.currentTime);
+    }
+}
+
+function updateNoiseFilterQ(value) {
+    console.log('updateNoiseFilterQ: ' + value);
+    noiseFilterQ = parseFloat(value);
+    document.getElementById('noiseFilterQValue').textContent = noiseFilterQ.toFixed(1);
+    if (noiseBandpassFilter) {
+        noiseBandpassFilter.Q.setValueAtTime(value, audioCtx.currentTime);
     }
 }
