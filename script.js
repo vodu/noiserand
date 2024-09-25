@@ -208,7 +208,11 @@ function updateNoiseType(value) {
 
 function updateNoiseFilterFrequency(value) {
     console.log('updateNoiseFilterFrequency: ' + value);
-    noiseFilterFrequency = parseFloat(value);
+    let float_value = parseFloat(value);
+    // freq = exp(ln(20) + knob * (ln(20000) - ln(20)))
+    let min_freq = 20;
+    let max_freq = 20000;
+    noiseFilterFrequency = Math.exp(Math.log(min_freq) + float_value * (Math.log(max_freq) - Math.log(min_freq)));
     document.getElementById('noiseFilterFrequencyValue').textContent = noiseFilterFrequency.toFixed(0);
     if (noiseBandpassFilter) {
         noiseBandpassFilter.frequency.setValueAtTime(noiseFilterFrequency, audioCtx.currentTime);
