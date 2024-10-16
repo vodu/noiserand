@@ -15,11 +15,21 @@ let brownNoiseNodeLeft;
 let brownNoiseNodeRight;
 let noiseVolume = 0.5;
 
+// binaural beats generator
+let binauralLeftOsc;
+let binauralRightOsc;
+let binauralGainLeft;
+let binauralGainRight;
+let binauralWaveform = 'sine';
+let binauralFrequency = 440;
+let binauralBeatFrequency = 30;
+let binauralBeatsVolume = 0.5;
+
 // master parametic equalizer
 let eqBands = [];
 const eqNumBands = 10;
 const eqFrequencies = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
-const eqQFactor = 1.0;
+const eqQFactor = 0.5;
 
 // master gain
 let masterGain;
@@ -37,10 +47,31 @@ async function start_noise() {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         console.log('audioCtx created');
         
+        // Binaural Beats Generator
+        binauralLeftOsc = audioCtx.createOscillator();
+        binauralLeftOsc.type = binauralWaveform;
+        binauralLeftOsc.frequency.setValueAtTime(binauralFrequency, audioCtx.currentTime);
+
+        binauralRightOsc = audioCtx.createOscillator();
+        binauralRightOsc.type = binauralWaveform;
+        binauralRightOsc.frequency.setValueAtTime(binauralFrequency + binauralBeatFrequency, audioCtx.currentTime);
+
+        binauralGainLeft = audioCtx.createGain();
+        binauralGainLeft.gain.setValueAtTime(binauralBeatsVolume, audioCtx.currentTime);
+        binauralGainRight = audioCtx.createGain();
+        binauralGainRight.gain.setValueAtTime(binauralBeatsVolume, audioCtx.currentTime);
+
+        binauralLeftOsc.connect(binauralGainLeft);
+        binauralRightOsc.connect(binauralGainRight);
+
+        var binauralChannelMerger = audioCtx.createChannelMerger(2);
+        binauralGainLeft.connect(binauralChannelMerger, 0, 0);
+        binauralGainRight.connect(binauralChannelMerger, 0, 1);
+
         // White Noise Gain
         noiseGainLeft = audioCtx.createGain();
-        noiseGainRight = audioCtx.createGain();
         noiseGainLeft.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
+        noiseGainRight = audioCtx.createGain();
         noiseGainRight.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
 
         var noiseChannelMerger = audioCtx.createChannelMerger(2);
@@ -68,6 +99,7 @@ async function start_noise() {
         brownNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
         brownNoiseNodeRight = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
 
+
         // Master Gain
         masterGain = audioCtx.createGain();
         masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
@@ -77,16 +109,20 @@ async function start_noise() {
         stereoPanner.pan.setValueAtTime(stereoPannerValue, audioCtx.currentTime);
 
         // Connections
-        noiseChannelMerger
-        .connect(masterGain)
-        .connect(stereoPanner)
-        .connect(audioCtx.destination);
+        binauralChannelMerger.connect(masterGain);
+        masterGain.connect(audioCtx.destination);
 
         // Parametric Equalizer
-        eqBands.forEach(eqBand => {
-            masterGain.connect(eqBand.filter);
-            eqBand.filter.connect(stereoPanner);
-        });
+        noiseChannelMerger.connect(eqBands[0].filter);
+        for (let i = 0; i < eqBands.length - 1; i++) {
+            eqBands[i].filter.connect(eqBands[i+1].filter);
+        }
+        eqBands[9].filter.connect(stereoPanner);
+        
+        stereoPanner.connect(audioCtx.destination);
+
+        binauralLeftOsc.start();
+        binauralRightOsc.start();
 
         isRunning = true;
     }
@@ -105,7 +141,19 @@ async function stop_noise() {
     noiseGainRight.gain.setValueAtTime(noiseVolume, audioCtx.currentTime);
     noiseGainRight.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
 
+    // binaural beats gain
+    binauralGainLeft.gain.cancelScheduledValues(audioCtx.currentTime);
+    binauralGainLeft.gain.setValueAtTime(binauralBeatsVolume, audioCtx.currentTime);
+    binauralGainLeft.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
+    binauralGainRight.gain.cancelScheduledValues(audioCtx.currentTime);
+    binauralGainRight.gain.setValueAtTime(binauralBeatsVolume, audioCtx.currentTime);
+    binauralGainRight.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
+
     await new Promise(resolve => setTimeout(resolve, fadeTime * 1000));
+
+    // binaural beats osc
+    binauralLeftOsc.stop();
+    binauralRightOsc.stop();
 
     // white noise
     whiteNoiseNodeLeft.port.postMessage('stop');
@@ -199,7 +247,7 @@ function createParametricEqualizer() {
         eqBand.filter.type = 'peaking';
         eqBand.filter.frequency.setValueAtTime(eqFrequencies[i], audioCtx.currentTime);
         eqBand.filter.Q.setValueAtTime(eqQFactor, audioCtx.currentTime);
-        eqBand.filter.gain.setValueAtTime(0, audioCtx.currentTime);
+        eqBand.filter.gain.setValueAtTime(-6, audioCtx.currentTime);
         eqBands.push(eqBand);
     }
 }
@@ -267,21 +315,11 @@ function updateNoiseType(value) {
     }
 }
 
-// function updateNoiseFilterFrequency(value) {
-//     let float_value = parseFloat(value);
-//     let min_freq = 20;
-//     let max_freq = 20000;
-//     noiseFilterFrequency = Math.exp(Math.log(min_freq) + float_value * (Math.log(max_freq) - Math.log(min_freq)));
-//     document.getElementById('noiseFilterFrequencyValue').textContent = noiseFilterFrequency.toFixed(0);
-//     if (noiseBandpassFilter) {
-//         noiseBandpassFilter.frequency.setValueAtTime(noiseFilterFrequency, audioCtx.currentTime);
-//     }
-// }
-
-// function updateNoiseFilterQ(value) {
-//     noiseFilterQ = parseFloat(value);
-//     document.getElementById('noiseFilterQValue').textContent = noiseFilterQ.toFixed(1);
-//     if (noiseBandpassFilter) {
-//         noiseBandpassFilter.Q.setValueAtTime(value, audioCtx.currentTime);
-//     }
-// }
+function updateBinauralBeatsVolume(value) {
+    binauralBeatsVolume = parseFloat(value);
+    document.getElementById('binauralBeatsVolumeValue').textContent = binauralBeatsVolume.toFixed(2);
+    if (binauralGainLeft && binauralGainRight) {
+        binauralGainLeft.gain.setValueAtTime(binauralBeatsVolume, audioCtx.currentTime);
+        binauralGainRight.gain.setValueAtTime(binauralBeatsVolume, audioCtx.currentTime);
+    }
+}

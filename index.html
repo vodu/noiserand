@@ -46,6 +46,16 @@
         </div>
     </div>
 
+    <h1>Binaural Beats Controls</h1>
+    <div id="bin-aural-beats-control">
+        <div>
+            <label for="binauralBeatsVolumeSlider">Binaural Beats Volume</label>
+            <input id="binauralBeatsVolumeSlider" type="range" min="0" max="1" value="0.5" step="0.01" oninput="updateBinauralBeatsVolume(this.value)">
+            <span id="binauralBeatsVolumeValue">0.50</span>
+        </div>
+
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
