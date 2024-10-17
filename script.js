@@ -21,8 +21,8 @@ let binauralRightOsc;
 let binauralGainLeft;
 let binauralGainRight;
 let binauralWaveform = 'sine';
-let binauralFrequency = 440;
-let binauralBeatFrequency = 30;
+let binauralFrequency = 200;
+let binauralBeatFrequency = 10;
 let binauralBeatsVolume = 0.5;
 
 // master parametic equalizer
@@ -313,11 +313,29 @@ function updateNoiseType(value) {
     }
 }
 
+// Binaural Beats
 function updateBinauralBeatsVolume(value) {
     binauralBeatsVolume = parseFloat(value);
     document.getElementById('binauralBeatsVolumeValue').textContent = binauralBeatsVolume.toFixed(2);
     if (binauralGainLeft && binauralGainRight) {
         binauralGainLeft.gain.setValueAtTime(binauralBeatsVolume, audioCtx.currentTime);
         binauralGainRight.gain.setValueAtTime(binauralBeatsVolume, audioCtx.currentTime);
+    }
+}
+
+function updateBinauralBeatsCarrierFrequency(value) {
+    binauralFrequency = parseFloat(value);
+    document.getElementById('binauralBeatsCarrierFreqValue').textContent = binauralFrequency.toFixed(2);
+    if (binauralLeftOsc && binauralRightOsc) {
+        binauralLeftOsc.frequency.setValueAtTime(binauralFrequency, audioCtx.currentTime);
+        binauralRightOsc.frequency.setValueAtTime(binauralFrequency + binauralBeatFrequency, audioCtx.currentTime);
+    }
+}
+
+function updateBinauralBeatsBeatFrequency(value) {
+    binauralBeatFrequency = parseFloat(value);
+    document.getElementById('binauralBeatsBeatFreqValue').textContent = binauralBeatFrequency.toFixed(2);
+    if (binauralRightOsc) {
+        binauralRightOsc.frequency.setValueAtTime(binauralFrequency + binauralBeatFrequency, audioCtx.currentTime);
     }
 }
