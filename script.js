@@ -99,7 +99,6 @@ async function start_noise() {
         brownNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
         brownNoiseNodeRight = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
 
-
         // Master Gain
         masterGain = audioCtx.createGain();
         masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
@@ -110,10 +109,9 @@ async function start_noise() {
 
         // Connections
         binauralChannelMerger.connect(masterGain);
-        masterGain.connect(audioCtx.destination);
+        noiseChannelMerger.connect(masterGain);
 
-        // Parametric Equalizer
-        noiseChannelMerger.connect(eqBands[0].filter);
+        masterGain.connect(eqBands[0].filter);
         for (let i = 0; i < eqBands.length - 1; i++) {
             eqBands[i].filter.connect(eqBands[i+1].filter);
         }
