@@ -47,6 +47,9 @@ let masterVolume = 0.5;
 let stereoPanner;
 let stereoPannerValue = 0;
 
+// anaylser for scope
+let analyser;
+
 //
 // AudioContext start and stop
 //  
@@ -54,7 +57,7 @@ async function start_noise() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         console.log('audioCtx created');
-        
+
         // Binaural Beats Generator
         binauralLeftOsc = audioCtx.createOscillator();
         binauralLeftOsc.type = binauralWaveform;
@@ -132,6 +135,13 @@ async function start_noise() {
         stereoPanner = audioCtx.createStereoPanner();
         stereoPanner.pan.setValueAtTime(stereoPannerValue, audioCtx.currentTime);
 
+        // Scope
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        var bufferLength = analyser.frequencyBinCount;
+        var dataArray = new Uint8Array(bufferLength);
+        analyser.getByteTimeDomainData(dataArray);
+
         // Connections
         binauralChannelMerger.connect(masterGain);
         noiseChannelMerger.connect(masterGain);
@@ -139,11 +149,12 @@ async function start_noise() {
 
         masterGain.connect(eqBands[0].filter);
         for (let i = 0; i < eqBands.length - 1; i++) {
-            eqBands[i].filter.connect(eqBands[i+1].filter);
+            eqBands[i].filter.connect(eqBands[i + 1].filter);
         }
         eqBands[9].filter.connect(stereoPanner);
-        
+
         stereoPanner.connect(audioCtx.destination);
+        stereoPanner.connect(analyser);
 
         binauralLeftOsc.start();
         binauralRightOsc.start();
@@ -213,6 +224,8 @@ async function stop_noise() {
 
     stereoPanner.disconnect();
 
+    analyser.disconnect();
+
     // parametric equalizer
     eqBands.forEach(eqBand => {
         eqBand.filter.disconnect();
@@ -231,11 +244,13 @@ async function stop_noise() {
 
 function toggleStartStop() {
     if (isRunning) {
-        stop_noise().then(() => { 
+        stop_noise().then(() => {
+            cancelAnimationFrame(draw);
             document.getElementById('startStopButton').textContent = 'Start';
         });
     } else {
         start_noise().then(() => {
+            draw();
             document.getElementById('startStopButton').textContent = 'Stop';
         });
     }
@@ -273,7 +288,7 @@ function createParametricEqualizer() {
         gainSlider.max = 24;
         gainSlider.step = 0.5;
         gainSlider.value = 0;
-        gainSlider.oninput = function() {
+        gainSlider.oninput = function () {
             updateEqBandGain(i, gainSlider.value);
         };
         bandContainer.appendChild(gainSlider);
@@ -294,6 +309,49 @@ function createParametricEqualizer() {
 function updateEqBandGain(bandIndex, value) {
     let gain = parseFloat(value);
     eqBands[bandIndex].filter.gain.setValueAtTime(gain, audioCtx.currentTime);
+}
+
+//
+// Drawing
+//
+function draw() {
+
+    if (!analyser) {
+        return;
+    }
+
+    requestAnimationFrame(draw);
+
+    const canvas = document.getElementById('analyzerCanvas');
+    const canvasCtx = canvas.getContext('2d');
+    canvasCtx.fillStyle = "rgb(200 200 200)";
+    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+    canvasCtx.lineWidth = 2;
+    canvasCtx.strokeStyle = "rgb(0 0 0)";
+    canvasCtx.beginPath();
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteTimeDomainData(dataArray);
+
+    const sliceWidth = (canvas.width * 1.0) / bufferLength;
+    let x = 0;
+
+    for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0;
+        const y = (v * canvas.height) / 2;
+
+        if (i === 0) {
+            canvasCtx.moveTo(x, y);
+        } else {
+            canvasCtx.lineTo(x, y);
+        }
+
+        x += sliceWidth;
+    }
+
+    canvasCtx.lineTo(canvas.width, canvas.height / 2);
+    canvasCtx.stroke();
 }
 
 // 
