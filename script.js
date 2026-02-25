@@ -13,7 +13,7 @@ let pinkNoiseNodeLeft;
 let pinkNoiseNodeRight;
 let brownNoiseNodeLeft;
 let brownNoiseNodeRight;
-let noiseVolume = 0.5;
+let noiseVolume = 0.1;
 
 // binaural beats generator
 let binauralLeftOsc;
@@ -24,6 +24,14 @@ let binauralWaveform = 'sine';
 let binauralFrequency = 200;
 let binauralBeatFrequency = 10;
 let binauralBeatsVolume = 0.5;
+
+// crackle generator
+let crackleGainLeft;
+let crackleGainRight;
+let crackleNodeLeft;
+let crackleNodeRight;
+let crackleRate = 5;
+let crackleVolume = 1.0;
 
 // master parametic equalizer
 let eqBands = [];
@@ -78,6 +86,16 @@ async function start_noise() {
         noiseGainLeft.connect(noiseChannelMerger, 0, 0);
         noiseGainRight.connect(noiseChannelMerger, 0, 1);
 
+        // Crackle Gain
+        crackleGainLeft = audioCtx.createGain();
+        crackleGainLeft.gain.setValueAtTime(crackleVolume, audioCtx.currentTime);
+        crackleGainRight = audioCtx.createGain();
+        crackleGainRight.gain.setValueAtTime(crackleVolume, audioCtx.currentTime);
+
+        var crackleChannelMerger = audioCtx.createChannelMerger(2);
+        crackleGainLeft.connect(crackleChannelMerger, 0, 0);
+        crackleGainRight.connect(crackleChannelMerger, 0, 1);
+
         await loadNoiseWorklet();
 
         // todo: create equalizer on page load finished
@@ -99,6 +117,13 @@ async function start_noise() {
         brownNoiseNodeLeft = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
         brownNoiseNodeRight = new AudioWorkletNode(audioCtx, 'brown-noise-processor');
 
+
+        // Crackle Node
+        crackleNodeLeft = new AudioWorkletNode(audioCtx, 'crackle-processor');
+        crackleNodeLeft.connect(crackleGainLeft);
+        crackleNodeRight = new AudioWorkletNode(audioCtx, 'crackle-processor');
+        crackleNodeRight.connect(crackleGainRight);
+
         // Master Gain
         masterGain = audioCtx.createGain();
         masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
@@ -110,6 +135,7 @@ async function start_noise() {
         // Connections
         binauralChannelMerger.connect(masterGain);
         noiseChannelMerger.connect(masterGain);
+        crackleChannelMerger.connect(masterGain);
 
         masterGain.connect(eqBands[0].filter);
         for (let i = 0; i < eqBands.length - 1; i++) {
@@ -147,6 +173,14 @@ async function stop_noise() {
     binauralGainRight.gain.setValueAtTime(binauralBeatsVolume, audioCtx.currentTime);
     binauralGainRight.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
 
+    // crackle gain
+    crackleGainLeft.gain.cancelScheduledValues(audioCtx.currentTime);
+    crackleGainLeft.gain.setValueAtTime(crackleVolume, audioCtx.currentTime);
+    crackleGainLeft.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
+    crackleGainRight.gain.cancelScheduledValues(audioCtx.currentTime);
+    crackleGainRight.gain.setValueAtTime(crackleVolume, audioCtx.currentTime);
+    crackleGainRight.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeTime);
+
     await new Promise(resolve => setTimeout(resolve, fadeTime * 1000));
 
     // binaural beats osc
@@ -170,6 +204,12 @@ async function stop_noise() {
     brownNoiseNodeLeft.disconnect();
     brownNoiseNodeRight.port.postMessage('stop');
     brownNoiseNodeRight.disconnect();
+
+    // crackle nodes
+    crackleNodeLeft.port.postMessage('stop');
+    crackleNodeLeft.disconnect();
+    crackleNodeRight.port.postMessage('stop');
+    crackleNodeRight.disconnect();
 
     stereoPanner.disconnect();
 
@@ -207,6 +247,7 @@ function toggleStartStop() {
 async function loadNoiseWorklet() {
     if (audioCtx) {
         await audioCtx.audioWorklet.addModule('noise-worklet.js');
+        await audioCtx.audioWorklet.addModule('crackle-worklet.js');
     }
 }
 //
@@ -337,5 +378,24 @@ function updateBinauralBeatsBeatFrequency(value) {
     document.getElementById('binauralBeatsBeatFreqValue').textContent = binauralBeatFrequency.toFixed(2);
     if (binauralRightOsc) {
         binauralRightOsc.frequency.setValueAtTime(binauralFrequency + binauralBeatFrequency, audioCtx.currentTime);
+    }
+}
+
+// Crackle
+function updateCrackleVolume(value) {
+    crackleVolume = parseFloat(value);
+    document.getElementById('crackleVolumeValue').textContent = crackleVolume.toFixed(2);
+    if (crackleGainLeft && crackleGainRight) {
+        crackleGainLeft.gain.setValueAtTime(crackleVolume, audioCtx.currentTime);
+        crackleGainRight.gain.setValueAtTime(crackleVolume, audioCtx.currentTime);
+    }
+}
+
+function updateCrackleRate(value) {
+    crackleRate = parseFloat(value);
+    document.getElementById('crackleRateValue').textContent = crackleRate.toFixed(2);
+    if (crackleNodeLeft && crackleNodeRight) {
+        crackleNodeLeft.port.postMessage({ type: 'updateRate', rate: crackleRate });
+        crackleNodeRight.port.postMessage({ type: 'updateRate', rate: crackleRate });
     }
 }
