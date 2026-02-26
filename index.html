@@ -79,6 +79,11 @@
             <input id="crackleRateSlider" type="range" min="0" max="50" value="5" step="0.1" oninput="updateCrackleRate(this.value)">
             <span id="crackleRateValue">5</span>
         </div>
+        <div>
+            <label for="crackleDecaySlider">Crackle Decay</label>
+            <input id="crackleDecaySlider" type="range" min="0.001" max="0.1" value="0.001" step="0.001" oninput="updateCrackleDecay(this.value)">
+            <span id="crackleDecayValue">0.001</span>
+        </div>
     </div>
 
     <script src="script.js"></script>

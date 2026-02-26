@@ -457,3 +457,12 @@ function updateCrackleRate(value) {
         crackleNodeRight.port.postMessage({ type: 'updateRate', rate: crackleRate });
     }
 }
+
+function updateCrackleDecay(value) {
+    const crackleDecay = parseFloat(value);
+    document.getElementById('crackleDecayValue').textContent = crackleDecay.toFixed(3);
+    if (crackleNodeLeft && crackleNodeRight) {
+        crackleNodeLeft.port.postMessage({ type: 'updateDecay', decayTime: crackleDecay });
+        crackleNodeRight.port.postMessage({ type: 'updateDecay', decayTime: crackleDecay });
+    }
+}
