@@ -13,7 +13,7 @@ let pinkNoiseNodeLeft;
 let pinkNoiseNodeRight;
 let brownNoiseNodeLeft;
 let brownNoiseNodeRight;
-let noiseVolume = 0.1;
+let noiseVolume = 0.0;
 
 // binaural beats generator
 let binauralLeftOsc;
@@ -23,7 +23,7 @@ let binauralGainRight;
 let binauralWaveform = 'sine';
 let binauralFrequency = 200;
 let binauralBeatFrequency = 10;
-let binauralBeatsVolume = 0.5;
+let binauralBeatsVolume = 0.0;
 
 // crackle generator
 let crackleGainLeft;
@@ -31,7 +31,10 @@ let crackleGainRight;
 let crackleNodeLeft;
 let crackleNodeRight;
 let crackleRate = 5;
-let crackleVolume = 1.0;
+let crackleVolume = 0.0;
+
+// granular sampler
+let granularNode;
 
 // master parametic equalizer
 let eqBands = [];
@@ -127,6 +130,10 @@ async function start_noise() {
         crackleNodeRight = new AudioWorkletNode(audioCtx, 'crackle-processor');
         crackleNodeRight.connect(crackleGainRight);
 
+
+        // Granular Sampler Node
+        granularNode = new AudioWorkletNode(audioCtx, 'granular-processor');
+
         // Master Gain
         masterGain = audioCtx.createGain();
         masterGain.gain.setValueAtTime(masterVolume, audioCtx.currentTime);
@@ -146,6 +153,8 @@ async function start_noise() {
         binauralChannelMerger.connect(masterGain);
         noiseChannelMerger.connect(masterGain);
         crackleChannelMerger.connect(masterGain);
+
+        granularNode.connect(masterGain);
 
         masterGain.connect(eqBands[0].filter);
         for (let i = 0; i < eqBands.length - 1; i++) {
@@ -222,7 +231,11 @@ async function stop_noise() {
     crackleNodeRight.port.postMessage('stop');
     crackleNodeRight.disconnect();
 
+    granularNode.port.postMessage('stop');
+    granularNode.disconnect();
+
     stereoPanner.disconnect();
+    masterGain.disconnect();
 
     analyser.disconnect();
 
@@ -250,6 +263,7 @@ function toggleStartStop() {
         });
     } else {
         start_noise().then(() => {
+            loadSample('harp.wav');
             draw();
             document.getElementById('startStopButton').textContent = 'Stop';
         });
@@ -263,6 +277,7 @@ async function loadNoiseWorklet() {
     if (audioCtx) {
         await audioCtx.audioWorklet.addModule('noise-worklet.js');
         await audioCtx.audioWorklet.addModule('crackle-worklet.js');
+        await audioCtx.audioWorklet.addModule('granular-worklet.js');
     }
 }
 //
@@ -309,6 +324,21 @@ function createParametricEqualizer() {
 function updateEqBandGain(bandIndex, value) {
     let gain = parseFloat(value);
     eqBands[bandIndex].filter.gain.setValueAtTime(gain, audioCtx.currentTime);
+}
+
+async function loadSample(url) {
+    if (!audioCtx) { return; }
+
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    
+    const channels = [];
+    for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+        channels.push(audioBuffer.getChannelData(i));
+    }
+
+    granularNode.port.postMessage( {type: 'loadBuffer', channels: channels, length: audioBuffer.length, sampleRate: audioBuffer.sampleRate} );
 }
 
 //
@@ -466,3 +496,38 @@ function updateCrackleDecay(value) {
         crackleNodeRight.port.postMessage({ type: 'updateDecay', decayTime: crackleDecay });
     }
 }
+
+// Granular Sampler
+
+function updateGranularPosition(value) {
+    const position = parseFloat(value);
+    document.getElementById('granularPositionValue').textContent = position.toFixed(2);
+    if (granularNode) {
+        granularNode.port.postMessage({ type: 'updatePosition', position: position });
+    }
+}
+
+function updateGranularGrainSize(value) {
+    const grainSize = parseFloat(value);
+    document.getElementById('granularGrainSizeValue').textContent = grainSize.toFixed(3);
+    if (granularNode) {
+        granularNode.port.postMessage({ type: 'updateGrainSize', grainSize: grainSize });
+    }
+}
+
+function updateGranularDensity(value) {
+    const density = parseFloat(value);
+    document.getElementById('granularDensityValue').textContent = density.toFixed(1);
+    if (granularNode) {
+        granularNode.port.postMessage({ type: 'updateDensity', density: density });
+    }
+}
+
+function updateGranularSpread(value) {
+    const spread = parseFloat(value);
+    document.getElementById('granularSpreadValue').textContent = spread.toFixed(2);
+    if (granularNode) {
+        granularNode.port.postMessage({ type: 'updateSpread', spread: spread });
+    }
+}
+

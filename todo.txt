@@ -1,4 +1,2 @@
 - more waveforms
 - lfo for binaural beat osc
-- crossfader between noise and binaural beats
-- visualizer
