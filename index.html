@@ -39,6 +39,11 @@
             <span id="noiseVolumeValue">0.10</span>
         </div>
         <div>
+            <label for="noiseFrequencySlider">Noise Frequency</label>
+            <input id="noiseFrequencySlider" type="range" min="20" max="20000" value="500" step="1" oninput="updateNoiseFrequency(this.value)">
+            <span id="noiseFrequencyValue">500</span>
+        </div>
+        <div>
             <label for="noiseTypeSelect">Noise Type</label>
             <select id="noiseTypeSelect" onchange="updateNoiseType(this.value)">
                 <option value="white">White</option>

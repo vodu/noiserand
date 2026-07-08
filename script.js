@@ -13,6 +13,8 @@ let pinkNoiseNodeLeft;
 let pinkNoiseNodeRight;
 let brownNoiseNodeLeft;
 let brownNoiseNodeRight;
+let noiseBiquadFilter;
+let noiseBiquadFilterFrequency = 500;
 let noiseVolume = 0.0;
 
 // binaural beats generator
@@ -32,10 +34,16 @@ let crackleNodeLeft;
 let crackleNodeRight;
 let crackleRate = 5;
 let crackleVolume = 0.0;
+let crackleDecay = 0.001;
 
 // granular sampler
+let granularGain;
 let granularNode;
 let granularVolume = 0.5;
+let granularPosition = 0.5;
+let granularGrainSize = 0.1;
+let granularDensity = 10;
+let granularSpread = 0.01;
 
 // master parametic equalizer
 let eqBands = [];
@@ -152,7 +160,15 @@ async function start_noise() {
 
         // Connections
         binauralChannelMerger.connect(masterGain);
-        noiseChannelMerger.connect(masterGain);
+        
+        // Post Noise Processing
+        noiseBiquadFilter = audioCtx.createBiquadFilter();
+        noiseBiquadFilter.type = "bandpass";
+        noiseBiquadFilter.frequency.setValueAtTime(noiseBiquadFilterFrequency, audioCtx.currentTime);
+        noiseBiquadFilter.Q = 10;
+        noiseChannelMerger.connect(noiseBiquadFilter);
+        noiseBiquadFilter.connect(masterGain);
+
         crackleChannelMerger.connect(masterGain);
 
         granularGain = audioCtx.createGain();
@@ -228,6 +244,9 @@ async function stop_noise() {
     brownNoiseNodeLeft.disconnect();
     brownNoiseNodeRight.port.postMessage('stop');
     brownNoiseNodeRight.disconnect();
+
+    // noise filter
+    noiseBiquadFilter.disconnect();
 
     // crackle nodes
     crackleNodeLeft.port.postMessage('stop');
@@ -419,6 +438,14 @@ function updateNoiseVolume(value) {
     }
 }
 
+function updateNoiseFrequency(value) {
+    noiseBiquadFilterFrequency = parseFloat(value);
+    document.getElementById('noiseFrequencyValue').textContent = noiseBiquadFilterFrequency.toFixed(0);
+    if (noiseBiquadFilter) {
+        noiseBiquadFilter.frequency.setValueAtTime(noiseBiquadFilterFrequency, audioCtx.currentTime);
+    }
+}
+
 function updateNoiseType(value) {
     console.log('updateNoiseType: ' + value);
 
@@ -493,7 +520,7 @@ function updateCrackleRate(value) {
 }
 
 function updateCrackleDecay(value) {
-    const crackleDecay = parseFloat(value);
+    crackleDecay = parseFloat(value);
     document.getElementById('crackleDecayValue').textContent = crackleDecay.toFixed(3);
     if (crackleNodeLeft && crackleNodeRight) {
         crackleNodeLeft.port.postMessage({ type: 'updateDecay', decayTime: crackleDecay });
@@ -512,34 +539,68 @@ function updateGranularVolume(value) {
 }
 
 function updateGranularPosition(value) {
-    const position = parseFloat(value);
-    document.getElementById('granularPositionValue').textContent = position.toFixed(2);
+    granularPosition = parseFloat(value);
+    document.getElementById('granularPositionValue').textContent = granularPosition.toFixed(2);
     if (granularNode) {
-        granularNode.port.postMessage({ type: 'updatePosition', position: position });
+        granularNode.port.postMessage({ type: 'updatePosition', position: granularPosition });
     }
 }
 
 function updateGranularGrainSize(value) {
-    const grainSize = parseFloat(value);
-    document.getElementById('granularGrainSizeValue').textContent = grainSize.toFixed(3);
+    granularGrainSize = parseFloat(value);
+    document.getElementById('granularGrainSizeValue').textContent = granularGrainSize.toFixed(3);
     if (granularNode) {
-        granularNode.port.postMessage({ type: 'updateGrainSize', grainSize: grainSize });
+        granularNode.port.postMessage({ type: 'updateGrainSize', grainSize: granularGrainSize });
     }
 }
 
 function updateGranularDensity(value) {
-    const density = parseFloat(value);
-    document.getElementById('granularDensityValue').textContent = density.toFixed(1);
+    granularDensity = parseFloat(value);
+    document.getElementById('granularDensityValue').textContent = granularDensity.toFixed(1);
     if (granularNode) {
-        granularNode.port.postMessage({ type: 'updateDensity', density: density });
+        granularNode.port.postMessage({ type: 'updateDensity', density: granularDensity });
     }
 }
 
 function updateGranularSpread(value) {
-    const spread = parseFloat(value);
-    document.getElementById('granularSpreadValue').textContent = spread.toFixed(2);
+    granularSpread = parseFloat(value);
+    document.getElementById('granularSpreadValue').textContent = granularSpread.toFixed(2);
     if (granularNode) {
-        granularNode.port.postMessage({ type: 'updateSpread', spread: spread });
+        granularNode.port.postMessage({ type: 'updateSpread', spread: granularSpread });
     }
 }
+
+//
+// Initialization
+//
+
+// Sync every slider and its value field to the default defined globally.
+function initSliderDefaults() {
+    const sliderDefaults = [
+        ['masterVolumeSlider', masterVolume, updateMasterVolume],
+        ['stereoPanningSlider', stereoPannerValue, updateStereoPanning],
+        ['noiseVolumeSlider', noiseVolume, updateNoiseVolume],
+        ['noiseFrequencySlider', noiseBiquadFilterFrequency, updateNoiseFrequency],
+        ['binauralBeatsVolumeSlider', binauralBeatsVolume, updateBinauralBeatsVolume],
+        ['binauralBeatsCarrierFreqSlider', binauralFrequency, updateBinauralBeatsCarrierFrequency],
+        ['binauralBeatsBeatFreqSlider', binauralBeatFrequency, updateBinauralBeatsBeatFrequency],
+        ['crackleVolumeSlider', crackleVolume, updateCrackleVolume],
+        ['crackleRateSlider', crackleRate, updateCrackleRate],
+        ['crackleDecaySlider', crackleDecay, updateCrackleDecay],
+        ['granularVolumeSlider', granularVolume, updateGranularVolume],
+        ['granularPositionSlider', granularPosition, updateGranularPosition],
+        ['granularGrainSizeSlider', granularGrainSize, updateGranularGrainSize],
+        ['granularDensitySlider', granularDensity, updateGranularDensity],
+        ['granularSpreadSlider', granularSpread, updateGranularSpread],
+    ];
+
+    sliderDefaults.forEach(([sliderId, defaultValue, updateFn]) => {
+        document.getElementById(sliderId).value = defaultValue;
+        updateFn(defaultValue);
+    });
+
+    console.log("initSliderDefaults");
+}
+
+window.addEventListener('load', initSliderDefaults);
 
