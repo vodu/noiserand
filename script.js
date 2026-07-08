@@ -35,6 +35,7 @@ let crackleVolume = 0.0;
 
 // granular sampler
 let granularNode;
+let granularVolume = 0.5;
 
 // master parametic equalizer
 let eqBands = [];
@@ -154,7 +155,10 @@ async function start_noise() {
         noiseChannelMerger.connect(masterGain);
         crackleChannelMerger.connect(masterGain);
 
-        granularNode.connect(masterGain);
+        granularGain = audioCtx.createGain();
+        granularGain.gain.setValueAtTime(granularVolume, audioCtx.currentTime);
+        granularNode.connect(granularGain);
+        granularGain.connect(masterGain);
 
         masterGain.connect(eqBands[0].filter);
         for (let i = 0; i < eqBands.length - 1; i++) {
@@ -498,6 +502,14 @@ function updateCrackleDecay(value) {
 }
 
 // Granular Sampler
+
+function updateGranularVolume(value) {
+    granularVolume = parseFloat(value);
+    document.getElementById('granularVolumeValue').textContent = granularVolume.toFixed(2);
+    if (granularGain) {
+        granularGain.gain.setValueAtTime(granularVolume, audioCtx.currentTime);
+    }
+}
 
 function updateGranularPosition(value) {
     const position = parseFloat(value);

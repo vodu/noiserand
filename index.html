@@ -89,6 +89,11 @@
     <h1>Granular Sampler Controls</h1>
     <div id="granular-sampler-control">
         <div>
+            <label for="granularVolumeSlider">Granular Volume</label>
+            <input id="granularVolumeSlider" type="range" min="0" max="1" value="0.5" step="0.01" oninput="updateGranularVolume(this.value)">
+            <span id="granularVolumeValue">0.500</span>
+        </div>
+        <div>
             <label for="granularPositionSlider">SamplePosition</label>
             <input id="granularPositionSlider" type="range" min="0" max="1" value="0.5" step="0.01" oninput="updateGranularPosition(this.value)">
             <span id="granularPositionValue">0.5</span>
