@@ -14,7 +14,7 @@ let pinkNoiseNodeRight;
 let brownNoiseNodeLeft;
 let brownNoiseNodeRight;
 let noiseBiquadFilter;
-let noiseBiquadFilterFrequency = 500;
+let noiseFilterPosition = 0.5; // 0 = lowpass, 0.5 = broad bandpass, 1 = highpass
 let noiseVolume = 0.0;
 
 // binaural beats generator
@@ -39,7 +39,7 @@ let crackleDecay = 0.001;
 // granular sampler
 let granularGain;
 let granularNode;
-let granularVolume = 0.5;
+let granularVolume = 0.0;
 let granularPosition = 0.5;
 let granularGrainSize = 0.1;
 let granularDensity = 10;
@@ -163,9 +163,7 @@ async function start_noise() {
         
         // Post Noise Processing
         noiseBiquadFilter = audioCtx.createBiquadFilter();
-        noiseBiquadFilter.type = "bandpass";
-        noiseBiquadFilter.frequency.setValueAtTime(noiseBiquadFilterFrequency, audioCtx.currentTime);
-        noiseBiquadFilter.Q = 10;
+        applyNoiseFilter();
         noiseChannelMerger.connect(noiseBiquadFilter);
         noiseBiquadFilter.connect(masterGain);
 
@@ -438,12 +436,37 @@ function updateNoiseVolume(value) {
     }
 }
 
-function updateNoiseFrequency(value) {
-    noiseBiquadFilterFrequency = parseFloat(value);
-    document.getElementById('noiseFrequencyValue').textContent = noiseBiquadFilterFrequency.toFixed(0);
-    if (noiseBiquadFilter) {
-        noiseBiquadFilter.frequency.setValueAtTime(noiseBiquadFilterFrequency, audioCtx.currentTime);
+// Morph the filter from the single position slider:
+//   0.5 = broad bandpass, > 0.5 = highpass (rising cutoff), < 0.5 = lowpass (falling cutoff).
+function noiseFilterSettings() {
+    const minFreq = 20;
+    const maxFreq = 20000;
+    if (noiseFilterPosition > 0.5) {
+        const t = (noiseFilterPosition - 0.5) / 0.5;
+        return { type: 'highpass', freq: minFreq * Math.pow(maxFreq / minFreq, t), q: 0.3 };
+    } else if (noiseFilterPosition < 0.5) {
+        const t = noiseFilterPosition / 0.5;
+        return { type: 'lowpass', freq: minFreq * Math.pow(maxFreq / minFreq, t), q: 0.3 };
     }
+    return { type: 'bandpass', freq: Math.sqrt(minFreq * maxFreq), q: 0.0 };
+}
+
+function applyNoiseFilter() {
+    if (!noiseBiquadFilter || !audioCtx) {
+        return;
+    }
+    const settings = noiseFilterSettings();
+    noiseBiquadFilter.type = settings.type;
+    noiseBiquadFilter.frequency.setValueAtTime(settings.freq, audioCtx.currentTime);
+    noiseBiquadFilter.Q.setValueAtTime(settings.q, audioCtx.currentTime);
+}
+
+function updateNoiseFilter(value) {
+    noiseFilterPosition = parseFloat(value);
+    const settings = noiseFilterSettings();
+    const typeLabel = { lowpass: 'LP', bandpass: 'BP', highpass: 'HP' }[settings.type];
+    document.getElementById('noiseFilterValue').textContent = typeLabel + ' ' + Math.round(settings.freq) + ' Hz';
+    applyNoiseFilter();
 }
 
 function updateNoiseType(value) {
@@ -580,7 +603,7 @@ function initSliderDefaults() {
         ['masterVolumeSlider', masterVolume, updateMasterVolume],
         ['stereoPanningSlider', stereoPannerValue, updateStereoPanning],
         ['noiseVolumeSlider', noiseVolume, updateNoiseVolume],
-        ['noiseFrequencySlider', noiseBiquadFilterFrequency, updateNoiseFrequency],
+        ['noiseFilterSlider', noiseFilterPosition, updateNoiseFilter],
         ['binauralBeatsVolumeSlider', binauralBeatsVolume, updateBinauralBeatsVolume],
         ['binauralBeatsCarrierFreqSlider', binauralFrequency, updateBinauralBeatsCarrierFrequency],
         ['binauralBeatsBeatFreqSlider', binauralBeatFrequency, updateBinauralBeatsBeatFrequency],
@@ -598,8 +621,6 @@ function initSliderDefaults() {
         document.getElementById(sliderId).value = defaultValue;
         updateFn(defaultValue);
     });
-
-    console.log("initSliderDefaults");
 }
 
 window.addEventListener('load', initSliderDefaults);

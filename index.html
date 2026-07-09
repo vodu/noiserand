@@ -39,9 +39,9 @@
             <span id="noiseVolumeValue">0.10</span>
         </div>
         <div>
-            <label for="noiseFrequencySlider">Noise Frequency</label>
-            <input id="noiseFrequencySlider" type="range" min="20" max="20000" value="500" step="1" oninput="updateNoiseFrequency(this.value)">
-            <span id="noiseFrequencyValue">500</span>
+            <label for="noiseFilterSlider">Noise Filter</label>
+            <input id="noiseFilterSlider" type="range" min="0" max="1" value="0.5" step="0.01" oninput="updateNoiseFilter(this.value)">
+            <span id="noiseFilterValue">BP 632 Hz</span>
         </div>
         <div>
             <label for="noiseTypeSelect">Noise Type</label>
